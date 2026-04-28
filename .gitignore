@@ -1,0 +1,93 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+env/
+.venv/
+*.egg-info/
+
+# Environment secrets
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build/coverage
+coverage/
+htmlcov/
+.pytest_cache/
+frontend/coverage/
+
+# Logs
+*.log
+logs/
+backend/logs/
+
+# Docker
+docker-volume/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.tgz
+*.tar.gz
+.pnp.*
+yarn-error.log
+npm-debug.log*
+lerna-debug.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated files
+backend/app/__pycache__/
+frontend/src/vite-env.d.ts
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+
+# Temporary files
+*.tmp
+*.bak
+*~
