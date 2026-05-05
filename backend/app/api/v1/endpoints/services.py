@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from typing import Any
 
 from app.services import (
-    EnhancedEnrichmentService,
+    EnrichmentService,
     LLMAnalysisService,
     EnhancedAttackMapper,
     DeduplicationService,
@@ -19,37 +19,26 @@ router = APIRouter()
 @router.get("/status")
 async def service_status():
     """Get status of all services."""
+    from app.config import get_settings
+    settings = get_settings()
+    
     return {
         "success": True,
         "data": {
             "enrichment": "EnhancedEnrichmentService available",
-            "llm": "LLMAnalysisService available (Ollama)",
-            "attack_mapper": "EnhancedAttackMapper with ATT&CK",
+            "llm": f"LLMAnalysisService with Gemini ({settings.gemini_model})",
+            "attack_mapper": "EnhancedAttackMapper with ATT&CK + Gemini",
             "deduplication": "DeduplicationService available",
             "correlation": "CorrelationEngine with Neo4j graph",
         }
     }
 
 
-@router.post("/test-enrichment")
-async def test_enrichment(ioc: dict[str, Any]):
-    """Test enrichment pipeline."""
-    service = EnhancedEnrichmentService()
-    result = await service.enrich_ioc(ioc)
-    await service.close()
-    
-    return {
-        "success": True,
-        "message": "Enrichment test complete",
-        "data": result,
-    }
-
-
-@router.post("/test-llm")
-async def test_llm(prompt: str, max_tokens: int = 512):
-    """Test LLM generation."""
+@router.post("/test-gemini")
+async def test_gemini(prompt: str, max_tokens: int = 512):
+    """Test Gemini LLM generation."""
     service = LLMAnalysisService()
-    result = await service.ollama.generate(
+    result = await service.gemini.generate(
         prompt=prompt,
         max_tokens=max_tokens,
     )
@@ -57,8 +46,22 @@ async def test_llm(prompt: str, max_tokens: int = 512):
     
     return {
         "success": True,
-        "message": "LLM test complete",
+        "message": "Gemini test complete",
         "data": {"response": result},
+    }
+
+
+@router.post("/test-enrichment")
+async def test_enrichment(ioc: dict[str, Any]):
+    """Test enrichment pipeline."""
+    service = EnrichmentService()
+    result = await service.enrich_ioc(ioc)
+    await service.close()
+    
+    return {
+        "success": True,
+        "message": "Enrichment test complete",
+        "data": result,
     }
 
 

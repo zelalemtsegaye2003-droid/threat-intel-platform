@@ -19,12 +19,6 @@ docker-compose up -d
 echo "⏳ Waiting for services to start..."
 sleep 10
 
-# Check if Ollama needs to pull a model
-if ! docker exec ollama ollama list | grep -q "llama3.2"; then
-    echo "🤖 Pulling LLM model (llama3.2) - this may take a few minutes..."
-    docker exec ollama ollama pull llama3.2
-fi
-
 # Install frontend dependencies if needed
 if [ ! -d "frontend/node_modules" ]; then
     echo "📦 Installing frontend dependencies..."

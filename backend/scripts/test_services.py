@@ -84,28 +84,6 @@ async def test_redis():
         return False
 
 
-async def test_ollama():
-    """Test Ollama LLM connection."""
-    try:
-        import httpx
-        from app.config import get_settings
-        settings = get_settings()
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"{settings.ollama_base_url}/api/tags")
-            if response.status_code == 200:
-                models = response.json().get("models", [])
-                print(f"✓ Ollama: {len(models)} models available")
-                if models:
-                    print(f"  - First model: {models[0].get('name', 'unknown')}")
-                return True
-        print(f"✗ Ollama: No response from API")
-        return False
-    except Exception as e:
-        print(f"✗ Ollama: {e}")
-        return False
-
-
 async def main():
     """Run all tests."""
     print("=" * 60)
@@ -130,7 +108,6 @@ async def main():
     results.append(("Neo4j", await test_neo4j()))
     results.append(("Qdrant", await test_qdrant()))
     results.append(("Redis", await test_redis()))
-    results.append(("Ollama LLM", await test_ollama()))
     
     print()
     print("-" * 60)

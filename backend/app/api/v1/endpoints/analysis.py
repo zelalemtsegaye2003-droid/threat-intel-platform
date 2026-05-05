@@ -25,7 +25,7 @@ async def analyze_text(
     if analysis_type == "threat-report":
         result = await llm_svc.analyze_threat_report(text)
     else:
-        result = await llm_svc.ollama.generate(
+        result = await llm_svc.gemini.generate(
             prompt=text,
             system_prompt="You are a cybersecurity analyst. Provide a concise analysis."
         )
@@ -44,8 +44,8 @@ async def extract_iocs(
     text: str,
     min_confidence: int = 70,
 ):
-    """Extract IOCs from text using LLM."""
-    iocs = await llm_svc.ollama.extract_iocs_from_text(text)
+    """Extract IOCs from text using Gemini."""
+    iocs = await llm_svc.gemini.extract_iocs_from_text(text)
     
     # Filter by confidence
     filtered = [ioc for ioc in iocs if ioc.get("confidence", 0) >= min_confidence]
@@ -127,7 +127,7 @@ async def upload_and_analyze(
     if analysis_type == "threat-report":
         result = await llm_svc.analyze_threat_report(text)
     else:
-        result = await llm_svc.ollama.generate(prompt=text[:5000])  # Limit length
+        result = await llm_svc.gemini.generate(prompt=text[:5000])  # Limit length
     
     return {
         "success": True,

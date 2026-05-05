@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16
@@ -30,10 +28,11 @@ services:
       - "7474:7474"  # HTTP
       - "7687:7687"  # Bolt
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "${NEO4J_PASSWORD:-secure_password}", "RETURN 1"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7474"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -43,11 +42,6 @@ services:
     ports:
       - "6333:6333"  # REST
       - "6334:6334"  # gRPC
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   redis:
     image: redis:7.2-alpine
@@ -79,29 +73,15 @@ services:
       timeout: 10s
       retries: 3
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: threat-ollama
-    volumes:
-      - ollama_data:/root/.ollama
-    ports:
-      - "11434:11434"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    profiles:
-      - gpu  # Only start with --profile gpu
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: threat-backend
     environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-true}
+      DB_SCHEMA_MANAGEMENT: ${DB_SCHEMA_MANAGEMENT:-migrations}
       DATABASE_URL: postgresql://admin:${DB_PASSWORD:-secure_password}@postgres:5432/threatintel
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
@@ -109,20 +89,39 @@ services:
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6333
       REDIS_URL: redis://redis:6379
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-redis}
       RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-secure_password}@rabbitmq:5672
-      OLLAMA_BASE_URL: http://ollama:11434
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      USE_VERTEX_AI: ${USE_VERTEX_AI:-false}
       JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_here}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production-min-32-chars}
+      TLS_TERMINATED_UPSTREAM: ${TLS_TERMINATED_UPSTREAM:-false}
+      TRUST_X_FORWARDED_FOR: ${TRUST_X_FORWARDED_FOR:-false}
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
+      UVICORN_TIMEOUT_KEEP_ALIVE: ${UVICORN_TIMEOUT_KEEP_ALIVE:-65}
+      RUN_DB_MIGRATIONS_ON_START: ${RUN_DB_MIGRATIONS_ON_START:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ENABLE_METRICS: ${ENABLE_METRICS:-false}
     volumes:
       - ./backend:/app
       - ./logs:/app/logs
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8000/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
       neo4j:
         condition: service_healthy
-      qdrant:
+      redis:
         condition: service_healthy
     restart: unless-stopped
     develop:
@@ -133,13 +132,73 @@ services:
         - action: rebuild
           path: ./backend/Dockerfile
 
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    entrypoint: ["celery"]
+    command:
+      - "-A"
+      - "app.workers.celery_app:celery_app"
+      - "worker"
+      - "--loglevel=INFO"
+      - "--concurrency=2"
+    container_name: threat-celery-worker
+    environment:
+      DATABASE_URL: postgresql://admin:${DB_PASSWORD:-secure_password}@postgres:5432/threatintel
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-secure_password}@rabbitmq:5672
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-secure_password}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    entrypoint: ["celery"]
+    command:
+      - "-A"
+      - "app.workers.celery_app:celery_app"
+      - "beat"
+      - "--loglevel=INFO"
+    container_name: threat-celery-beat
+    environment:
+      DATABASE_URL: postgresql://admin:${DB_PASSWORD:-secure_password}@postgres:5432/threatintel
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://admin:${RABBITMQ_PASSWORD:-secure_password}@rabbitmq:5672
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
     container_name: threat-frontend
     environment:
-      VITE_API_BASE_URL: http://localhost:8000/api/v1
+      VITE_API_BASE_URL: /api/v1
     volumes:
       - ./frontend/src:/app/src
     ports:
@@ -159,7 +218,6 @@ volumes:
   qdrant_data:
   redis_data:
   rabbitmq_data:
-  ollama_data:
 
 networks:
   default:

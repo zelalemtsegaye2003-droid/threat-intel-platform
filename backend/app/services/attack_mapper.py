@@ -4,7 +4,7 @@ from typing import Any
 import httpx
 from datetime import datetime
 
-from app.services.llm_service import OllamaService
+from app.services.llm_service import GeminiService
 
 
 class AttackTechnique:
@@ -68,10 +68,10 @@ ATTACK_TECHNIQUES = {
 
 
 class EnhancedAttackMapper:
-    """Enhanced MITRE ATT&CK mapping with LLM assistance."""
+    """Enhanced MITRE ATT&CK mapping with Gemini assistance."""
 
     def __init__(self):
-        self.ollama = OllamaService()
+        self.gemini = GeminiService()
         self.techniques = ATTACK_TECHNIQUES
 
     async def map_ioc_to_techniques(self, ioc: dict[str, Any]) -> list[dict[str, Any]]:
@@ -101,7 +101,7 @@ class EnhancedAttackMapper:
 
         # LLM-enhanced mapping if we have context
         if ioc.get("metadata", {}).get("description"):
-            llm_result = await self.ollama.map_to_attack(
+            llm_result = await self.gemini.map_to_attack(
                 ioc.get("metadata", {}).get("description", "")
             )
             if llm_result and llm_result.get("technique_id") != "unknown":
@@ -110,7 +110,7 @@ class EnhancedAttackMapper:
                     "technique_name": llm_result.get("technique_name", ""),
                     "tactic": llm_result.get("tactic", ""),
                     "confidence": llm_result.get("confidence", 50),
-                    "source": "llm",
+                    "source": "gemini",
                 })
 
         return mappings
@@ -130,8 +130,8 @@ class EnhancedAttackMapper:
         return keyword_map.get(technique_id, [])
 
     async def map_report_to_techniques(self, report_text: str) -> list[dict[str, Any]]:
-        """Map an entire threat report to ATT&CK techniques using LLM."""
-        result = await self.ollama.map_to_attack(report_text[:2000])  # Limit length
+        """Map an entire threat report to ATT&CK techniques using Gemini."""
+        result = await self.gemini.map_to_attack(report_text[:2000])  # Limit length
         if result and result.get("technique_id") != "unknown":
             return [result]
         return []
@@ -149,7 +149,8 @@ class EnhancedAttackMapper:
         return None
 
     async def close(self):
-        await self.ollama.close()
+        """Clean up resources."""
+        await self.gemini.close()
 
 
 # For production use: Load official ATT&CK data from MITRE
