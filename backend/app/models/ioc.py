@@ -2,9 +2,49 @@ from __future__ import annotations
 
 from datetime import datetime
 from uuid import UUID, uuid4
+from typing import Optional, Any
 
 from pydantic import BaseModel, Field
-from typing import Optional, Any
+
+
+# ========================
+# Pydantic CRUD Schemas
+# ========================
+
+class IOCCreate(BaseModel):
+    """Schema for creating an IOC."""
+    type: str
+    value: str
+    threat_level: str = "medium"
+    confidence: int = Field(75, ge=0, le=100)
+    source: str = "manual"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    stix_id: Optional[str] = None
+
+
+class IOCUpdate(BaseModel):
+    """Schema for updating an IOC."""
+    threat_level: Optional[str] = None
+    confidence: Optional[int] = Field(None, ge=0, le=100)
+    active: Optional[bool] = None
+    metadata: Optional[dict[str, Any]] = None
+
+
+class IOCResponse(BaseModel):
+    """Schema for IOC API responses."""
+    id: UUID
+    type: str
+    value: str
+    threat_level: str
+    confidence: int
+    source: str
+    first_seen: datetime
+    last_seen: datetime
+    active: bool
+    metadata: dict[str, Any]
+    stix_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
 
 
 # ========================

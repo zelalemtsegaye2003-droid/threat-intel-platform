@@ -165,3 +165,8 @@ async def close_db() -> None:
     if _pool:
         await _pool.close()
         _pool = None
+
+
+async def init_security_db() -> None:
+    """Initialize security tables (users, audit_logs).
+    Now handled by Alembic migrations — this is a no-op for backward compatibility."""

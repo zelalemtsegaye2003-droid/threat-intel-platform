@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer
+from pydantic import BaseModel
 from datetime import timedelta
 from typing import Optional
 import asyncpg
@@ -12,9 +15,6 @@ from app.auth import (
     get_current_user,
     require_admin,
     log_audit,
-    UserCreateRequest,
-    UserLoginRequest,
-    TokenResponse,
 )
 from app.db.postgres import get_db
 

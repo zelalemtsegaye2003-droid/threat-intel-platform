@@ -1,3 +1,4 @@
+"""Optional OpenTelemetry tracing setup — degrades gracefully if dependencies are missing."""
 from __future__ import annotations
 
 import structlog
@@ -6,74 +7,80 @@ logger = structlog.get_logger(__name__)
 
 
 def setup_tracing() -> None:
-    """Configure OpenTelemetry tracing with FastAPI and Celery instrumentation."""
-    from opentelemetry import trace
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import (
-        BatchSpanProcessor,
-        ConsoleSpanExporter,
-    )
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
-        OTLPSpanExporter,
-    )
-    from opentelemetry.sdk.resources import Resource
-    from opentelemetry.semconv.resource import ResourceAttributes
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-    from opentelemetry.instrumentation.celery import CeleryInstrumentor
-    from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-    from opentelemetry.instrumentation.logging import LoggingInstrumentor
+    """Configure OpenTelemetry tracing with FastAPI and Celery instrumentation.
+    Gracefully skips if dependencies are not installed."""
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import (
+            BatchSpanProcessor,
+            ConsoleSpanExporter,
+        )
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.semconv.resource import ResourceAttributes
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.instrumentation.celery import CeleryInstrumentor
+        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+        from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
-    from app.config import get_settings
+        from app.config import get_settings
 
-    settings = get_settings()
+        settings = get_settings()
 
-    # Resource identifies this service in traces
-    resource = Resource.create(
-        {
-            ResourceAttributes.SERVICE_NAME: "threat-intel-platform",
-            ResourceAttributes.SERVICE_VERSION: "0.1.0",
-            "deployment.environment": settings.environment,
-        }
-    )
+        # Try OTLP exporter
+        otlp_exporter = None
+        otlp_endpoint = settings.otlp_export_endpoint
+        if otlp_endpoint:
+            try:
+                from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+                    OTLPSpanExporter,
+                )
+                otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
+                logger.info("otlp_exporter_configured", endpoint=otlp_endpoint)
+            except Exception as e:
+                logger.warning("otlp_exporter_failed", error=str(e))
 
-    # Configure tracer provider
-    provider = TracerProvider(resource=resource)
+        # Resource identifies this service in traces
+        resource = Resource.create(
+            {
+                ResourceAttributes.SERVICE_NAME: "threat-intel-platform",
+                ResourceAttributes.SERVICE_VERSION: "0.1.0",
+                "deployment.environment": settings.environment,
+            }
+        )
 
-    # Console exporter for local development
-    provider.add_span_processor(
-        BatchSpanProcessor(ConsoleSpanExporter(out=structlog.stdlib.stdlib.BoundLogger))
-    )
+        # Configure tracer provider
+        provider = TracerProvider(resource=resource)
+        provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 
-    # OTLP exporter (for Jaeger, Zipkin, or Grafana Tempo)
-    otlp_endpoint = settings.otlp_export_endpoint
-    if otlp_endpoint:
-        try:
-            otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
+        if otlp_exporter:
             provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-            logger.info("otlp_exporter_configured", endpoint=otlp_endpoint)
-        except Exception as e:
-            logger.warning("otlp_exporter_failed", error=str(e))
 
-    # Set global tracer provider
-    trace.set_tracer_provider(provider)
+        # Set global tracer provider
+        trace.set_tracer_provider(provider)
 
-    # Instrument FastAPI
-    FastAPIInstrumentor().instrument()
+        # Instrument FastAPI
+        FastAPIInstrumentor().instrument()
 
-    # Instrument Celery
-    CeleryInstrumentor().instrument()
+        # Instrument Celery
+        CeleryInstrumentor().instrument()
 
-    # Instrument httpx (outgoing HTTP calls to VirusTotal, Shodan, etc.)
-    HTTPXClientInstrumentor().instrument()
+        # Instrument httpx
+        HTTPXClientInstrumentor().instrument()
 
-    # Instrument Python logging to create spans from log records
-    LoggingInstrumentor().instrument(set_logging_context=True)
+        # Instrument Python logging
+        LoggingInstrumentor().instrument(set_logging_context=True)
 
-    logger.info("tracing_setup_complete", exporter="console+otlp" if otlp_endpoint else "console")
+        logger.info("tracing_setup_complete", exporter="console+otlp" if otlp_exporter else "console")
+
+    except ImportError as e:
+        logger.warning("tracing_skipped", reason=f"Missing dependency: {e}")
 
 
 def get_tracer(__name__: str):
-    """Get a tracer for the given module name."""
-    from opentelemetry import trace
-
-    return trace.get_tracer(__name__)
+    """Get a tracer for the given module name. Returns None if tracing is unavailable."""
+    try:
+        from opentelemetry import trace
+        return trace.get_tracer(__name__)
+    except ImportError:
+        return None

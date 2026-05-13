@@ -5,7 +5,13 @@ from typing import Any
 import httpx
 from datetime import datetime
 
-from app.services.llm_service import GeminiService
+# Lazy-load GeminiService to avoid import-time failures
+def _get_gemini_service():
+    try:
+        from app.services.llm_service import get_gemini_service
+        return get_gemini_service()
+    except Exception:
+        return None
 
 logger = structlog.get_logger(__name__)
 
@@ -71,10 +77,10 @@ ATTACK_TECHNIQUES = {
 
 
 class EnhancedAttackMapper:
-    """Enhanced MITRE ATT&CK mapping with Gemini assistance."""
+    """Enhanced MITRE ATT&CK mapping with Gemini assistance (degrades if LLM unavailable)."""
 
     def __init__(self):
-        self.gemini = GeminiService()
+        self.gemini = _get_gemini_service()
         self.techniques = ATTACK_TECHNIQUES
 
     async def map_ioc_to_techniques(self, ioc: dict[str, Any]) -> list[dict[str, Any]]:
