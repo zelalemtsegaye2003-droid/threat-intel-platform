@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
 
-const USE_MOCK = true // Toggle for mock mode
+const USE_MOCK = false // Toggle for mock mode
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',

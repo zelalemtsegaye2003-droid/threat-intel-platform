@@ -23,8 +23,9 @@ async def init_db() -> None:
             max_size=20,
             command_timeout=60,
         )
-        # Create tables if not exist
-        await create_tables()
+        # Create tables if not exist (only when not using migrations)
+        if settings.db_schema_management != "migrations":
+            await create_tables()
 
 
 async def get_db() -> AsyncGenerator[asyncpg.Connection, None]:

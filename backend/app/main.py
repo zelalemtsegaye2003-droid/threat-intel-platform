@@ -22,6 +22,7 @@ from app.metrics import (
 from app.api.v1.router import api_router
 from app.api.v1.endpoints import auth as auth_router
 from app.db.postgres import init_db, init_security_db
+from app.db.redis_db import init_redis, close_redis
 from app.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 
 logger = get_logger(__name__)
@@ -40,11 +41,24 @@ async def lifespan(app: FastAPI):
     # Setup OpenTelemetry tracing
     setup_tracing()
 
+    # Initialize Redis for caching
+    try:
+        await init_redis()
+        logger.info("redis_initialized")
+    except Exception as e:
+        logger.warning("redis_init_failed", error=str(e))
+
     await init_db()
     await init_security_db()
     logger.info("application_started", version="0.1.0", debug=settings.debug)
     yield
     logger.info("application_shutting_down")
+
+    # Close Redis
+    try:
+        await close_redis()
+    except Exception:
+        pass
 
 
 def create_application() -> FastAPI:

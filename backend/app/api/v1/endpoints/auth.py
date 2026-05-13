@@ -140,5 +140,5 @@ async def get_audit_logs(
         limit
     )
 
-# Add missing import
-from pydantic import BaseModel
+# Remove duplicate import
+# (already imported at the top of the file)
