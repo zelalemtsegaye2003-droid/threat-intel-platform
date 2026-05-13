@@ -16,7 +16,7 @@ A modern, open-source threat intelligence platform inspired by MISP, implementin
 
 ```bash
 # 1. Clone/enter project
-cd /home/zelalem/projects/threat-intel-platform
+cd path/to/threat-intel-platform
 
 # 2. Copy environment file (optional - defaults work)
 cp .env.example .env
