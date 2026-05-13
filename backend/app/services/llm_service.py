@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import os
 from typing import Any
 import structlog
@@ -8,6 +9,7 @@ from google import genai
 from google.genai import types
 
 from app.config import get_settings
+from app.metrics import LLM_REQUEST_COUNT, LLM_LATENCY, LLM_ERROR_COUNT
 
 logger = structlog.get_logger(__name__)
 
@@ -52,24 +54,29 @@ class GeminiService:
     ) -> str | None:
         """Generate text using Gemini."""
         try:
+            start_time = time.time()
+            LLM_REQUEST_COUNT.labels(model=self.model_name, operation="generate").inc()
+
             contents = [prompt]
-            
+
             config = types.GenerateContentConfig(
                 max_output_tokens=max_tokens,
                 temperature=temperature,
             )
-            
+
             if system_prompt:
                 config.system_instruction = system_prompt
-            
+
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=contents,
                 config=config,
             )
-            
+
+            LLM_LATENCY.labels(model=self.model_name, operation="generate").observe(time.time() - start_time)
             return response.text if response.text else None
         except Exception as e:
+            LLM_ERROR_COUNT.labels(model=self.model_name, error_type=type(e).__name__).inc()
             logger.error("gemini_generate_error", error=str(e))
             return None
 
@@ -81,6 +88,9 @@ class GeminiService:
     ) -> str | None:
         """Chat with Gemini using message history."""
         try:
+            start_time = time.time()
+            LLM_REQUEST_COUNT.labels(model=self.model_name, operation="chat").inc()
+
             # Convert messages to Gemini format
             contents = []
             for msg in messages:
@@ -93,22 +103,24 @@ class GeminiService:
                             parts=[types.Part(text=content)],
                         )
                     )
-            
+
             config = types.GenerateContentConfig(
                 max_output_tokens=max_tokens,
             )
-            
+
             if system_prompt:
                 config.system_instruction = system_prompt
-            
+
             response = self.client.models.generate_content(
                 model=self.model_name,
                 contents=contents,
                 config=config,
             )
-            
+
+            LLM_LATENCY.labels(model=self.model_name, operation="chat").observe(time.time() - start_time)
             return response.text if response.text else None
         except Exception as e:
+            LLM_ERROR_COUNT.labels(model=self.model_name, error_type=type(e).__name__).inc()
             logger.error("gemini_chat_error", error=str(e))
             return None
 

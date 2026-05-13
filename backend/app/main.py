@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from app.config import get_settings
 from app.logging_config import configure_logging, get_logger
 from app.sentry_config import init_sentry
+from app.tracing import setup_tracing
 from app.metrics import (
     REQUEST_COUNT,
     REQUEST_LATENCY,
@@ -19,11 +20,11 @@ from app.metrics import (
     collect_default_metrics,
 )
 from app.api.v1.router import api_router
+from app.api.v1.endpoints import auth as auth_router
 from app.db.postgres import init_db, init_security_db
 from app.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 
 logger = get_logger(__name__)
-
 settings = get_settings()
 
 
@@ -35,6 +36,9 @@ async def lifespan(app: FastAPI):
 
     # Initialize Sentry
     init_sentry(settings.sentry_dsn, settings.sentry_traces_sample_rate)
+
+    # Setup OpenTelemetry tracing
+    setup_tracing()
 
     await init_db()
     await init_security_db()
@@ -79,6 +83,15 @@ def create_application() -> FastAPI:
             if response.status_code >= 400:
                 ERROR_COUNT.labels(method=method, endpoint=path, status_code=str(response.status_code)).inc()
 
+            if response.status_code >= 500:
+                logger.error(
+                    "server_error",
+                    method=method,
+                    path=path,
+                    status_code=response.status_code,
+                    duration=elapsed,
+                )
+
             return response
         except Exception as e:
             elapsed = time.time() - start_time
@@ -97,17 +110,21 @@ def create_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Include routers
+    # Include main API routers
     app.include_router(api_router, prefix="/api/v1")
 
     # Auth endpoints
-    from app.api.v1.endpoints import auth as auth_router
     app.include_router(auth_router.router, prefix="/api/v1/auth", tags=["Authentication"])
+
+    # Monitoring endpoints (separate router, outside /api/versioning)
+    from app.health import health_router
+
+    app.include_router(health_router)
 
     # Prometheus /metrics endpoint
     @app.get("/metrics", tags=["Monitoring"], include_in_schema=False)
     async def metrics():
-        """Prometheus metrics endpoint."""
+        """Prometheus metrics endpoint for scraping."""
         data, content_type = collect_default_metrics()
         return PlainTextResponse(content=data, media_type=content_type)
 
@@ -120,6 +137,8 @@ def create_application() -> FastAPI:
             "status": "operational",
             "docs": "/docs",
             "metrics": "/metrics",
+            "health": "/health",
+            "health_deep": "/health/deep",
             "endpoints": {
                 "iocs": "/api/v1/iocs",
                 "actors": "/api/v1/actors",
@@ -145,6 +164,7 @@ app = create_application()
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "app.main:app",
         host=settings.api_host,

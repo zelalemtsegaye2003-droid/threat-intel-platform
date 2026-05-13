@@ -163,6 +163,10 @@ class Settings(BaseSettings):
         default=1.0,
         description="Sentry traces sample rate (0.0 to 1.0).",
     )
+    otlp_export_endpoint: str | None = Field(
+        default=None,
+        description="OTLP export endpoint for distributed tracing (e.g. http://jaeger:4318).",
+    )
 
     # Proxy / client IP trust
     trust_x_forwarded_for: bool = Field(

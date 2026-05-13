@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any, Optional
 import httpx
 import structlog
@@ -9,6 +10,7 @@ from app.config import get_settings
 from app.db.postgres import get_db
 from app.db.neo4j_db import create_ioc_node, create_relationship
 from app.db.qdrant_db import upsert_point
+from app.metrics import FEED_INGESTION_COUNT, FEED_INGESTION_DURATION
 from sentence_transformers import SentenceTransformer
 
 logger = structlog.get_logger(__name__)
@@ -62,11 +64,17 @@ class EnrichmentService:
     async def _enrich_ip(self, ip: str) -> dict[str, Any] | None:
         """Enrich IP address with GeoIP data."""
         try:
+            start_time = time.time()
+            FEED_INGESTION_COUNT.labels(feed="geoip", status="attempt").inc()
+
             # Using ipinfo.io (free tier, no key needed for basic)
             response = await self.client.get(f"https://ipinfo.io/{ip}/json")
             if response.status_code == 200:
+                FEED_INGESTION_DURATION.labels(feed="geoip").observe(time.time() - start_time)
+                FEED_INGESTION_COUNT.labels(feed="geoip", status="success").inc()
                 return response.json()
         except Exception as e:
+            FEED_INGESTION_COUNT.labels(feed="geoip", status="error").inc()
             logger.error("geoip_enrichment_failed", ip=ip, error=str(e))
         return None
 
