@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { iocAPI, actorAPI } from '@/services/api'
+import { useAuth } from '@/context/AuthContext'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -8,6 +9,8 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, isAuthenticated, logout } = useAuth()
   const [stats, setStats] = useState({
     totalIOCs: 0,
     activeThreats: 0,
@@ -26,7 +29,7 @@ export default function Layout({ children }: LayoutProps) {
         iocAPI.list({ page: 1, page_size: 1 }),
         actorAPI.list({ page: 1, page_size: 1 }),
       ])
-      
+
       setStats({
         totalIOCs: iocsRes.data?.total || 0,
         activeThreats: iocsRes.data?.total || 0,
@@ -62,7 +65,7 @@ export default function Layout({ children }: LayoutProps) {
                 <span className="text-2xl font-bold text-blue-600">🛡️</span>
                 <span className="text-xl font-bold text-gray-900">ThreatIntel</span>
               </Link>
-              
+
               <div className="hidden md:flex space-x-4">
                 {navItems.map((item) => (
                   <Link
@@ -86,6 +89,27 @@ export default function Layout({ children }: LayoutProps) {
                 <span className="w-2 h-2 bg-green-500 rounded-full inline-block"></span>
                 Services Online
               </div>
+
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-600">
+                    👤 {user?.username} ({user?.role})
+                  </span>
+                  <button
+                    onClick={() => logout()}
+                    className="text-sm text-red-600 hover:text-red-800 font-medium"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Login
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -100,7 +124,7 @@ export default function Layout({ children }: LayoutProps) {
             <StatCard title="Sources" value={stats.sources} color="purple" />
           </div>
         )}
-        
+
         <div className="bg-white rounded-lg shadow">
           {children}
         </div>
@@ -116,7 +140,7 @@ function StatCard({ title, value, color }: { title: string; value: number; color
     red: 'bg-red-500',
     purple: 'bg-purple-500',
   }
-  
+
   return (
     <div className="bg-white p-6 rounded-lg shadow border">
       <div className="flex items-center justify-between">

@@ -77,6 +77,9 @@ const mockAPI = {
     if (url.includes('/actors')) {
       return { data: { data: [], total: 0 } }
     }
+    if (url.includes('/auth/me')) {
+      return { data: mockStore.users[0] }
+    }
     return { data: { success: true } }
   },
 
@@ -91,6 +94,9 @@ const mockAPI = {
         }
       }
       throw { response: { status: 401, data: { detail: 'Invalid credentials' } } }
+    }
+    if (url.includes('/auth/register')) {
+      return { data: { message: 'User created successfully', username: data.username } }
     }
     if (url.includes('/iocs') && !url.includes('bulk')) {
       const newIOC = {
@@ -118,6 +124,15 @@ const mockAPI = {
 // Conditionally use mock or real API
 const api = USE_MOCK ? mockAPI : apiClient
 
+// Auth API
+export const authAPI = {
+  login: (username: string, password: string) => api.post('/auth/login', { username, password }),
+  register: (username: string, email: string, password: string) =>
+    api.post('/auth/register', { username, email, password, role: 'viewer' }),
+  me: () => api.get('/auth/me'),
+  users: () => api.get('/auth/users'),
+}
+
 // IOC API
 export const iocAPI = {
   list: (params?: any) => api.get('/iocs', { params }),
@@ -134,7 +149,7 @@ export const actorAPI = {
   list: (params?: any) => api.get('/actors', { params }),
   create: (data: any) => api.post('/actors', data),
   get: (id: string) => api.get(`/actors/${id}`),
-  getGraph: (id: string, depth?: number) => 
+  getGraph: (id: string, depth?: number) =>
     api.get(`/actors/${id}/graph`, { params: { depth } }),
 }
 
@@ -156,27 +171,27 @@ export const campaignAPI = {
 export const feedAPI = {
   list: () => api.get('/feeds/status'),
   register: (data: any) => api.post('/feeds/register', data),
-  ingest: (feedId: string, force?: boolean) => 
+  ingest: (feedId: string, force?: boolean) =>
     api.post('/feeds/ingest', { feed_id: feedId, force }),
 }
 
 // Search API
 export const searchAPI = {
-  textSearch: (query: string, filters?: any) => 
+  textSearch: (query: string, filters?: any) =>
     api.post('/search/text', { query, filters }),
-  semanticSearch: (query: string, collection?: string, limit?: number) => 
+  semanticSearch: (query: string, collection?: string, limit?: number) =>
     api.post('/search/semantic', { query, collection, limit }),
 }
 
 // Analysis API
 export const analysisAPI = {
-  analyzeText: (text: string, type?: string) => 
+  analyzeText: (text: string, type?: string) =>
     api.post('/analysis/analyze-text', { text, analysis_type: type }),
-  extractIOCs: (text: string, minConfidence?: number) => 
+  extractIOCs: (text: string, minConfidence?: number) =>
     api.post('/analysis/extract-iocs', { text, min_confidence: minConfidence }),
-  generateReport: (iocIds: string[]) => 
+  generateReport: (iocIds: string[]) =>
     api.post('/analysis/generate-report', { ioc_ids: iocIds }),
-  mapToATTACK: (text: string, useLLM?: boolean) => 
+  mapToATTACK: (text: string, useLLM?: boolean) =>
     api.post('/analysis/map-attack', { text, use_llm: useLLM }),
   uploadReport: (file: File) => {
     const formData = new FormData()
@@ -190,18 +205,18 @@ export const analysisAPI = {
 // TAXII API
 export const taxiiAPI = {
   listCollections: () => api.get('/taxii/collections'),
-  push: (bundle: any, collectionId?: string) => 
+  push: (bundle: any, collectionId?: string) =>
     api.post('/taxii/push', { bundle, collection_id: collectionId }),
-  ingest: (url: string, apiKey?: string) => 
+  ingest: (url: string, apiKey?: string) =>
     api.post('/taxii/ingest', { collection_url: url, api_key: apiKey }),
 }
 
 // STIX API
 export const stixAPI = {
   importBundle: (bundle: any) => api.post('/stix/import', { bundle }),
-  exportBundle: (iocIds?: string[], format?: string) => 
+  exportBundle: (iocIds?: string[], format?: string) =>
     api.get('/stix/export', { params: { ioc_ids: iocIds, format } }),
-  convertToPattern: (type: string, value: string) => 
+  convertToPattern: (type: string, value: string) =>
     api.post('/stix/convert', { ioc_type: type, value }),
 }
 

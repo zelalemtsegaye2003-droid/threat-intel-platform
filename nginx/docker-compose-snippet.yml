@@ -1,0 +1,40 @@
+# Docker Compose snippet — Nginx + Certbot for TLS termination
+# Add to your existing docker-compose.yml under "services:"
+
+#   nginx:
+#     image: nginx:1.27-alpine
+#     container_name: threat-nginx
+#     ports:
+#       - "80:80"
+#       - "443:443"
+#     volumes:
+#       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+#       - ssl_data:/etc/nginx/ssl    # Mount TLS certs here
+#       - certbot_www:/var/www/certbot
+#     depends_on:
+#       - backend
+#       - frontend
+#     restart: unless-stopped
+
+#   certbot:
+#     image: certbot/certbot:latest
+#     container_name: threat-certbot
+#     volumes:
+#       - ssl_data:/etc/letsencrypt
+#       - certbot_www:/var/www/certbot
+#     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+#     restart: unless-stopped
+
+# Self-signed cert generation (for dev/testing):
+# docker run --rm -v ssl_data:/certs alpine sh -c \
+#   "apk add --no-cache openssl && \
+#    openssl req -x509 -nodes -days 365 \
+#      -newkey rsa:2048 \
+#      -keyout /certs/tls.key \
+#      -out /certs/tls.crt \
+#      -subj '/CN=localhost/O=ThreatIntel/C=US'"
+
+---
+# To add to docker-compose.yml, append under "volumes:":
+#   ssl_data:
+#   certbot_www:
