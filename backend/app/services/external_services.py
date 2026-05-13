@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from typing import Any, Optional
 import httpx
+import structlog
 from datetime import datetime
 
 from app.config import get_settings
 from app.services.enrichment import EnrichmentService
+
+logger = structlog.get_logger(__name__)
 
 settings = get_settings()
 
@@ -39,7 +42,7 @@ class VirusTotalService:
                     "checked_at": datetime.utcnow().isoformat(),
                 }
         except Exception as e:
-            print(f"VirusTotal IP enrichment failed: {e}")
+            logger.error("vt_ip_enrichment_failed", ip=ip, error=str(e))
         return None
 
     async def enrich_domain(self, domain: str) -> dict[str, Any] | None:
@@ -59,7 +62,7 @@ class VirusTotalService:
                     "checked_at": datetime.utcnow().isoformat(),
                 }
         except Exception as e:
-            print(f"VirusTotal domain enrichment failed: {e}")
+            logger.error("vt_domain_enrichment_failed", domain=domain, error=str(e))
         return None
 
     async def enrich_url(self, url: str) -> dict[str, Any] | None:
@@ -80,7 +83,7 @@ class VirusTotalService:
                     "checked_at": datetime.utcnow().isoformat(),
                 }
         except Exception as e:
-            print(f"VirusTotal URL enrichment failed: {e}")
+            logger.error("vt_url_enrichment_failed", url=url, error=str(e))
         return None
 
     async def enrich_hash(self, file_hash: str) -> dict[str, Any] | None:
@@ -103,7 +106,7 @@ class VirusTotalService:
                     "checked_at": datetime.utcnow().isoformat(),
                 }
         except Exception as e:
-            print(f"VirusTotal hash enrichment failed: {e}")
+            logger.error("vt_hash_enrichment_failed", file_hash=file_hash, error=str(e))
         return None
 
     async def close(self):
@@ -142,7 +145,7 @@ class ShodanService:
                     "checked_at": datetime.utcnow().isoformat(),
                 }
         except Exception as e:
-            print(f"Shodan search failed: {e}")
+            logger.error("shodan_host_search_failed", ip=ip, error=str(e))
         return None
 
     async def search_query(self, query: str, limit: int = 10) -> list[dict] | None:
@@ -158,7 +161,7 @@ class ShodanService:
                 data = response.json()
                 return data.get("matches", [])
         except Exception as e:
-            print(f"Shodan query failed: {e}")
+            logger.error("shodan_query_failed", query=query, error=str(e))
         return None
 
     async def close(self):

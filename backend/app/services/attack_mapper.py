@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import structlog
 from typing import Any
 import httpx
 from datetime import datetime
 
 from app.services.llm_service import GeminiService
+
+logger = structlog.get_logger(__name__)
 
 
 class AttackTechnique:
@@ -166,7 +169,7 @@ async def load_attack_data_from_url() -> dict[str, Any]:
         if response.status_code == 200:
             return response.json()
     except Exception as e:
-        print(f"Failed to load ATT&CK data: {e}")
+        logger.error("attack_data_load_failed", error=str(e))
     finally:
         await client.aclose()
     return {}

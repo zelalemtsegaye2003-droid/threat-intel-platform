@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 import httpx
+import structlog
 from datetime import datetime
 
 from app.config import get_settings
@@ -9,6 +10,8 @@ from app.db.postgres import get_db
 from app.db.neo4j_db import create_ioc_node, create_relationship
 from app.db.qdrant_db import upsert_point
 from sentence_transformers import SentenceTransformer
+
+logger = structlog.get_logger(__name__)
 
 settings = get_settings()
 
@@ -64,7 +67,7 @@ class EnrichmentService:
             if response.status_code == 200:
                 return response.json()
         except Exception as e:
-            print(f"GeoIP enrichment failed: {e}")
+            logger.error("geoip_enrichment_failed", ip=ip, error=str(e))
         return None
 
     async def _enrich_domain(self, domain: str) -> dict[str, Any] | None:

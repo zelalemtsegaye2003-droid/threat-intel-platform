@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import os
 from typing import Any
+import structlog
 
 from google import genai
 from google.genai import types
 
 from app.config import get_settings
+
+logger = structlog.get_logger(__name__)
 
 
 class GeminiService:
@@ -67,7 +70,7 @@ class GeminiService:
             
             return response.text if response.text else None
         except Exception as e:
-            print(f"Gemini generate error: {e}")
+            logger.error("gemini_generate_error", error=str(e))
             return None
 
     async def chat(
@@ -106,7 +109,7 @@ class GeminiService:
             
             return response.text if response.text else None
         except Exception as e:
-            print(f"Gemini chat error: {e}")
+            logger.error("gemini_chat_error", error=str(e))
             return None
 
     async def extract_iocs_from_text(self, text: str) -> list[dict[str, Any]]:
@@ -145,7 +148,7 @@ Return only the JSON array, no other text.
             iocs = json.loads(cleaned)
             return iocs if isinstance(iocs, list) else []
         except Exception as e:
-            print(f"Gemini IOC extraction error: {e}")
+            logger.error("gemini_ioc_extraction_error", error=str(e))
             return []
 
     async def map_to_attack(self, text: str) -> dict[str, Any] | None:
@@ -183,7 +186,7 @@ Return only the JSON object, no other text. If no technique matches, return {{"t
             result = json.loads(cleaned)
             return result if isinstance(result, dict) else None
         except Exception as e:
-            print(f"Gemini ATT&CK mapping error: {e}")
+            logger.error("gemini_attack_mapping_error", error=str(e))
             return None
 
     async def close(self):
@@ -231,7 +234,7 @@ Return the analysis as a JSON object with keys: summary, severity, iocs, recomme
             result = json.loads(cleaned)
             return result if isinstance(result, dict) else None
         except Exception as e:
-            print(f"Gemini threat analysis error: {e}")
+            logger.error("gemini_threat_analysis_error", error=str(e))
             return None
 
     async def generate_threat_brief(
@@ -258,7 +261,7 @@ Provide a professional threat intelligence summary.
             
             return await self.gemini.generate(prompt, max_tokens=2048)
         except Exception as e:
-            print(f"Gemini threat brief error: {e}")
+            logger.error("gemini_threat_brief_error", error=str(e))
             return None
 
     async def close(self):

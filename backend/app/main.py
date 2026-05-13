@@ -1,27 +1,30 @@
 from __future__ import annotations
 
+import logging
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.config import get_settings
+from app.logging_config import configure_logging, get_logger
 from app.api.v1.router import api_router
 from app.db.postgres import init_db, init_security_db
 from app.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    # Startup
+    configure_logging()
     settings = get_settings()
+    logger.info("application_starting", version="0.1.0", debug=settings.debug)
     await init_db()
-    await init_security_db()  # Create users and audit_logs tables
-    print(f"Starting Threat Intelligence Platform v0.1.0")
-    print(f"Debug mode: {settings.debug}")
+    await init_security_db()
+    logger.info("application_started", version="0.1.0", debug=settings.debug)
     yield
-    # Shutdown
-    print("Shutting down...")
+    logger.info("application_shutting_down")
 
 
 def create_application() -> FastAPI:
@@ -41,7 +44,7 @@ def create_application() -> FastAPI:
     # Security middleware (order matters - rate limit before CORS)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RateLimitMiddleware, calls=100, period=60)
-    
+
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
