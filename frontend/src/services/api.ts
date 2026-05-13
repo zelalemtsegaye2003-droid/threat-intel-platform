@@ -191,6 +191,11 @@ export const campaignAPI = {
   get: (id: string) => api.get(`/campaigns/${id}`),
 }
 
+// Dashboard API
+export const dashboardAPI = {
+  summary: () => api.get('/dashboard/summary'),
+}
+
 // Feeds API
 export const feedAPI = {
   list: () => api.get('/feeds/status'),

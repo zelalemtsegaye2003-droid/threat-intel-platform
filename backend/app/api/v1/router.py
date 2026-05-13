@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     taxii,
     stix,
     analysis,
+    dashboard,
 )
 
 api_router = APIRouter()
@@ -26,3 +27,4 @@ api_router.include_router(search.router, prefix="/search", tags=["Search"])
 api_router.include_router(taxii.router, prefix="/taxii", tags=["TAXII 2.x"])
 api_router.include_router(stix.router, prefix="/stix", tags=["STIX 2.1"])
 api_router.include_router(analysis.router, prefix="/analysis", tags=["Analysis"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
