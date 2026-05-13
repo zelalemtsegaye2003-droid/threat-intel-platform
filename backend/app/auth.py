@@ -50,6 +50,44 @@ def generate_recovery_codes(count: int = 10) -> list[str]:
     return ["".join(secrets.choice(alphabet) for _ in range(8)) for _ in range(count)]
 
 
+def verify_google_token(google_id_token: str) -> dict | None:
+    """
+    Verify a Google OAuth2 ID token and return user info dict.
+
+    Returns None if token is invalid or google-auth is not installed.
+    Requires: pip install google-auth
+    """
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+
+        client_id = get_settings().google_client_id
+        if not client_id:
+            return None
+
+        audience = client_id if client_id != "web" else None
+        id_info = id_token.verify_oauth2_token(
+            google_id_token,
+            google_requests.Request(),
+            audience=audience,
+        )
+
+        if id_info.get("issuer") not in ("accounts.google.com", "https://accounts.google.com"):
+            return None
+
+        return {
+            "sub": id_info.get("sub"),
+            "email": id_info.get("email"),
+            "name": id_info.get("name", ""),
+            "picture": id_info.get("picture", ""),
+        }
+    except ImportError:
+        # google-auth not installed — cannot verify
+        return None
+    except Exception:
+        return None
+
+
 # ============================================================
 # JWT Functions
 # ============================================================

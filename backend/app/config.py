@@ -49,6 +49,12 @@ class Settings(BaseSettings):
         description="Set to True to use Vertex AI (Agent Platform) instead of express mode.",
     )
 
+    # Google OAuth2 (optional — enables "Sign in with Google")
+    google_client_id: str | None = Field(
+        default=None,
+        description="Google OAuth2 Client ID for 'Sign in with Google'. Set to your web client ID from Google Cloud Console.",
+    )
+
     # Security
     # SECRET_KEY kept for backwards compatibility, but JWT uses JWT_SECRET consistently.
     secret_key: str = Field(
