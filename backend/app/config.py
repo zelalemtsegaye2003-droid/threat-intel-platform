@@ -157,6 +157,13 @@ class Settings(BaseSettings):
             return None
         return v
 
+    # Observability
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = Field(
+        default=1.0,
+        description="Sentry traces sample rate (0.0 to 1.0).",
+    )
+
     # Proxy / client IP trust
     trust_x_forwarded_for: bool = Field(
         default=False,
