@@ -98,6 +98,24 @@ const mockAPI = {
     if (url.includes('/auth/register')) {
       return { data: { message: 'User created successfully', username: data.username } }
     }
+    if (url.includes('/auth/totp/enable')) {
+      return {
+        data: {
+          secret: 'JBSWY3DPEHPK3PXP',
+          provisioning_uri: 'otpauth://totp/ThreatIntel:admin?secret=JBSWY3DPEHPK3PXP&issuer=ThreatIntel',
+          recovery_codes: ['ABCD1234', 'EFGH5678', 'IJKL9012', 'MNOP3456', 'QRST7890', 'UVWX1234', 'YZAB5678', 'CDEF9012', 'GHIJ3456', 'KLMN7890'],
+        }
+      }
+    }
+    if (url.includes('/auth/totp/verify') || url.includes('/auth/totp/recovery')) {
+      return {
+        data: {
+          access_token: 'mock-jwt-token-admin-mfa',
+          token_type: 'bearer',
+          mfa_verified: true,
+        }
+      }
+    }
     if (url.includes('/iocs') && !url.includes('bulk')) {
       const newIOC = {
         id: `ioc-${Date.now()}`,
@@ -131,6 +149,12 @@ export const authAPI = {
     api.post('/auth/register', { username, email, password, role: 'viewer' }),
   me: () => api.get('/auth/me'),
   users: () => api.get('/auth/users'),
+  // MFA endpoints
+  enableMFA: (password: string) => api.post('/auth/totp/enable', { password }),
+  disableMFA: (password: string) => api.post('/auth/totp/disable', { password }),
+  verifyMFA: (token: string) => api.post('/auth/totp/verify', { token }),
+  useRecoveryCode: (code: string) => api.post('/auth/totp/recovery', { recovery_code: code }),
+  mfaStatus: () => api.get('/auth/totp/status'),
 }
 
 // IOC API

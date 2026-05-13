@@ -90,19 +90,24 @@ export default function Layout({ children }: LayoutProps) {
                 Services Online
               </div>
 
-              {isAuthenticated ? (
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-600">
-                    👤 {user?.username} ({user?.role})
-                  </span>
-                  <button
-                    onClick={() => logout()}
-                    className="text-sm text-red-600 hover:text-red-800 font-medium"
-                  >
-                    Logout
-                  </button>
-                </div>
-              ) : (
+{isAuthenticated ? (
+                 <div className="flex items-center space-x-3">
+                   <span className="text-sm text-gray-600">
+                     👤 {user?.username} ({user?.role})
+                   </span>
+                   {user?.mfa_enabled && (
+                     <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                       🔒 2FA
+                     </span>
+                   )}
+                   <button
+                     onClick={() => logout()}
+                     className="text-sm text-red-600 hover:text-red-800 font-medium"
+                   >
+                     Logout
+                   </button>
+                 </div>
+               ) : (
                 <Link
                   to="/login"
                   className="text-sm text-blue-600 hover:text-blue-800 font-medium"

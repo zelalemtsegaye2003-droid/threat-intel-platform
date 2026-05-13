@@ -7,6 +7,7 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import Verify2FA from './pages/Verify2FA'
 import { useAuth } from './context/AuthContext'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -26,9 +27,10 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+{/* Public routes */}
+       <Route path="/login" element={<Login />} />
+       <Route path="/register" element={<Register />} />
+       <Route path="/verify-2fa" element={<Verify2FA />} />
 
       {/* Protected routes */}
       <Route element={<RequireAuth />}>

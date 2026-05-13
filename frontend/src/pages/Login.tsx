@@ -15,7 +15,10 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      await login(username, password)
+      const result = await login(username, password)
+      if (result.requiresMFA) {
+        navigate('/verify-2fa')
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
     } finally {
